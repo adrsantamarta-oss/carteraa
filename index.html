@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Cartera"/>
+<meta name="theme-color" content="#10131a"/>
+<link rel="manifest" href="manifest.json"/>
+<title>Cartera.Track</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #10131a;
+    --card: #151a26;
+    --border: #1e2a3a;
+    --border2: #191f2e;
+    --text: #e8f0f8;
+    --text2: #d4e4f4;
+    --muted: #8899bb;
+    --dim: #5a7090;
+    --dimmer: #3a4f65;
+    --accent: #F4C542;
+    --red: #E8714A;
+    --green: #5BC4A0;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', 'Courier New', monospace; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 28px 16px 80px; min-height: 100vh; }
+
+  .wrap { width: 100%; max-width: 460px; }
+
+  /* Header */
+  .header { margin-bottom: 24px; }
+  .header-title { display: flex; align-items: flex-end; gap: 8px; }
+  .header-title .w { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -1px; color: #fff; }
+  .header-title .y { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); }
+  .header-sub { font-size: 10px; color: var(--dim); letter-spacing: 2px; margin-top: 2px; }
+
+  /* Notification */
+  #notif {
+    position: fixed; top: 16px; right: 16px; z-index: 999;
+    background: #1e2a38; border: 1px solid #2d3f52;
+    color: var(--green); padding: 10px 18px; border-radius: 8px;
+    font-size: 12px; letter-spacing: 1px;
+    opacity: 0; transform: translateY(-10px);
+    transition: all 0.25s ease; pointer-events: none;
+  }
+  #notif.show { opacity: 1; transform: translateY(0); }
+
+  /* Card */
+  .card {
+    background: var(--card); border-radius: 18px;
+    border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden;
+  }
+  .card-header {
+    padding: 13px 18px 11px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+
+  /* Donut */
+  #donut-wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 12px 14px; }
+  #donut-svg { overflow: visible; }
+  .legend { width: 100%; margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+  .legend-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 2px 0; transition: opacity 0.2s;
+  }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { flex: 1; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-pct { font-size: 12px; font-weight: 600; min-width: 50px; text-align: right; }
+  .legend-val { font-size: 11px; color: var(--dim); min-width: 80px; text-align: right; }
+
+  /* Asset rows */
+  .asset-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border2);
+    transition: background 0.15s; cursor: default;
+  }
+  .asset-row:last-child { border-bottom: none; }
+  .asset-row:hover { background: #1a2030; }
+  .asset-bar-col { width: 8px; height: 36px; border-radius: 4px; flex-shrink: 0; }
+  .asset-info { flex: 1; min-width: 0; }
+  .asset-name { font-size: 13px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .asset-value { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .asset-edit-hint { font-size: 9px; color: var(--dimmer); margin-left: 5px; }
+  .pct-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .pct-label { font-size: 13px; font-weight: 600; }
+  .pct-bar-bg { width: 56px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .pct-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .btn-del {
+    background: none; border: none; color: var(--dimmer); cursor: pointer;
+    font-size: 15px; padding: 4px 5px; border-radius: 4px; line-height: 1;
+    transition: color 0.15s; font-family: inherit;
+  }
+  .btn-del:hover { color: var(--red); }
+
+  /* Edit inline */
+  .edit-row { display: flex; gap: 6px; margin-top: 4px; }
+  .edit-input {
+    background: #0d1018; border: 1px solid var(--accent); border-radius: 6px;
+    color: #fff; padding: 3px 8px; font-size: 12px; width: 100px;
+    font-family: inherit; outline: none;
+  }
+  .btn-sm {
+    border: none; border-radius: 5px; padding: 3px 10px;
+    font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .btn-confirm { background: var(--accent); color: var(--bg); }
+  .btn-cancel { background: transparent; border: 1px solid #2d3f52; color: var(--muted); }
+
+  .empty-msg { padding: 28px 18px; text-align: center; color: #344050; font-size: 12px; letter-spacing: 1px; }
+
+  /* Add form */
+  .form-wrap { padding: 16px 16px 16px; }
+  .form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .form-input {
+    flex: 2 1 130px; background: #0d1018; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text2); padding: 11px 13px;
+    font-size: 13px; font-family: inherit; outline: none;
+    transition: border 0.2s;
+  }
+  .form-input:focus { border-color: #F4C54255; }
+  .form-input.num { flex: 1 1 85px; }
+  .btn-add {
+    flex: 0 0 auto; background: var(--accent); border: none; border-radius: 10px;
+    color: var(--bg); padding: 11px 20px; font-size: 13px; font-weight: 700;
+    font-family: inherit; cursor: pointer; letter-spacing: 0.5px;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .btn-add:hover { opacity: 0.85; transform: scale(0.97); }
+  .btn-add:active { transform: scale(0.94); }
+
+  /* Total bar */
+  .total-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 18px; border-top: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .total-label { color: var(--dim); letter-spacing: 1px; }
+  .total-val { color: var(--accent); font-weight: 600; font-size: 14px; }
+
+  @media (max-width: 400px) {
+    .legend-val { display: none; }
+    .form-input { font-size: 16px; } /* prevents zoom on iOS */
+    .form-input.num { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="notif"></div>
+
+  <div class="header">
+    <div class="header-title">
+      <span class="w">CARTERA</span><span class="y">.TRACK</span>
+    </div>
+    <div class="header-sub">PORTFOLIO ALLOCATION TRACKER</div>
+  </div>
+
+  <!-- Donut chart card -->
+  <div class="card" id="chart-card" style="display:none">
+    <div id="donut-wrap">
+      <svg id="donut-svg" width="210" height="210"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="total-line">
+      <span class="total-label">TOTAL CARTERA</span>
+      <span class="total-val" id="total-val">€0,00</span>
+    </div>
+  </div>
+
+  <!-- Asset list card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">MIS ACTIVOS</span>
+      <span class="card-label" id="count-label">0 posiciones</span>
+    </div>
+    <div id="asset-list">
+      <div class="empty-msg">Añade tu primer activo abajo ↓</div>
+    </div>
+  </div>
+
+  <!-- Add form card -->
+  <div class="card">
+    <div class="form-wrap">
+      <span class="card-label">AÑADIR ACTIVO</span>
+      <div class="form-row">
+        <input class="form-input" id="inp-name" type="text" placeholder="Nombre del activo" autocomplete="off"/>
+        <input class="form-input num" id="inp-val" type="number" min="0" step="any" placeholder="Valor €"/>
+        <button class="btn-add" id="btn-add">+ Añadir</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const COLORS = ["#F4C542","#E8714A","#5BC4A0","#5A9CF8","#C97BE8","#F47BB0","#4DD9E8","#A8E86B","#FF8C42","#7B8CF8"];
+const STORAGE_KEY = "cartera_assets_v1";
+
+let assets = [];
+let editId = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) assets = JSON.parse(raw);
+  } catch(e) {}
+  if (!assets.length) {
+    assets = [
+      { id: 1, name: "MSCI World ETF", value: 8500 },
+      { id: 2, name: "Bitcoin", value: 3200 },
+      { id: 3, name: "Apple Inc.", value: 2100 },
+      { id: 4, name: "Oro (ETC)", value: 1400 },
+      { id: 5, name: "Bonos EU", value: 900 },
+    ];
+    save();
+  }
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+}
+
+function fmt(v) {
+  return new Intl.NumberFormat("es-ES", { style:"currency", currency:"EUR", minimumFractionDigits:2 }).format(v);
+}
+function fmtPct(v) { return v.toFixed(2) + "%"; }
+
+let notifTimer;
+function notify(msg, color) {
+  const el = document.getElementById("notif");
+  el.textContent = msg;
+  el.style.color = color || "#5BC4A0";
+  el.classList.add("show");
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove("show"), 2000);
+}
+
+function getSegments() {
+  const total = assets.reduce((a, x) => a + x.value, 0);
+  return assets.map((a, i) => ({
+    ...a,
+    pct: total > 0 ? (a.value / total) * 100 : 0,
+    color: COLORS[i % COLORS.length],
+    total
+  }));
+}
+
+/* ---- Donut ---- */
+function drawDonut(segments) {
+  const svg = document.getElementById("donut-svg");
+  const cx = 105, cy = 105, r = 80, ir = 52;
+  svg.innerHTML = "";
+
+  let cum = 0;
+  const sorted = [...segments].sort((a,b) => b.pct - a.pct);
+  const total = segments.reduce((a,s) => a + s.value, 0);
+
+  sorted.forEach((seg, idx) => {
+    const start = cum;
+    cum += seg.pct / 100;
+    const end = cum;
+    const sa = start * 2 * Math.PI - Math.PI / 2;
+    const ea = end * 2 * Math.PI - Math.PI / 2;
+    const large = seg.pct > 50 ? 1 : 0;
+    const x1 = cx + r * Math.cos(sa), y1 = cy + r * Math.sin(sa);
+    const x2 = cx + r * Math.cos(ea), y2 = cy + r * Math.sin(ea);
+    const ix1 = cx + ir * Math.cos(sa), iy1 = cy + ir * Math.sin(sa);
+    const ix2 = cx + ir * Math.cos(ea), iy2 = cy + ir * Math.sin(ea);
+    const d = `M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${ix2},${iy2} A${ir},${ir} 0 ${large} 0 ${ix1},${iy1} Z`;
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", seg.color);
+    path.style.cursor = "pointer";
+    path.style.transition = "all 0.2s";
+    path.style.transformOrigin = `${cx}px ${cy}px`;
+
+    path.addEventListener("mouseenter", () => {
+      updateCenter(seg.name, fmtPct(seg.pct), fmt(seg.value), seg.color);
+      svg.querySelectorAll("path").forEach((p,i) => p.style.opacity = i === idx ? "1" : "0.35");
+      path.style.transform = "scale(1.06)";
+      path.style.filter = `drop-shadow(0 0 8px ${seg.color}88)`;
+    });
+    path.addEventListener("mouseleave", () => {
+      updateCenter(null, null, null, null, fmt(total));
+      svg.querySelectorAll("path").forEach(p => { p.style.opacity = "1"; p.style.transform = "scale(1)"; p.style.filter = "none"; });
+    });
+    // touch
+    path.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      updateCenter(seg.name, fmtPct(seg.pct), fmt(seg.value), seg.color);
+    }, { passive: false });
+
+    svg.appendChild(path);
+  });
+
+  // inner circle
+  const circ = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  circ.setAttribute("cx", cx); circ.setAttribute("cy", cy); circ.setAttribute("r", ir - 2);
+  circ.setAttribute("fill", "#10131a");
+  svg.appendChild(circ);
+
+  // center text group
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.id = "center-g";
+  svg.appendChild(g);
+  updateCenter(null, null, null, null, fmt(total));
+}
+
+function makeText(x, y, content, fill, size, weight) {
+  const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("text-anchor", "middle");
+  t.setAttribute("fill", fill);
+  t.setAttribute("font-size", size);
+  t.setAttribute("font-family", "'DM Mono', monospace");
+  t.setAttribute("font-weight", weight || "400");
+  t.textContent = content;
+  return t;
+}
+
+function updateCenter(name, pct, val, color, totalStr) {
+  const g = document.getElementById("center-g");
+  if (!g) return;
+  g.innerHTML = "";
+  if (name) {
+    g.appendChild(makeText(105, 95, name.length > 12 ? name.slice(0,12)+"…" : name, color, "11", "600"));
+    g.appendChild(makeText(105, 113, pct, "#fff", "16", "700"));
+    g.appendChild(makeText(105, 130, val, "#8899aa", "10", "400"));
+  } else {
+    g.appendChild(makeText(105, 100, "TOTAL", "#aabbcc", "10", "400"));
+    g.appendChild(makeText(105, 118, totalStr || "€0,00", "#fff", "13", "700"));
+  }
+}
+
+/* ---- Legend ---- */
+function renderLegend(segments) {
+  const sorted = [...segments].sort((a,b) => b.pct - a.pct);
+  const leg = document.getElementById("legend");
+  leg.innerHTML = "";
+  sorted.forEach(s => {
+    const row = document.createElement("div");
+    row.className = "legend-row";
+    row.innerHTML = `
+      <div class="legend-dot" style="background:${s.color}"></div>
+      <div class="legend-name">${s.name}</div>
+      <div class="legend-pct" style="color:${s.color}">${fmtPct(s.pct)}</div>
+      <div class="legend-val">${fmt(s.value)}</div>
+    `;
+    leg.appendChild(row);
+  });
+}
+
+/* ---- Asset list ---- */
+function renderList(segments) {
+  const list = document.getElementById("asset-list");
+  list.innerHTML = "";
+  if (!segments.length) {
+    list.innerHTML = '<div class="empty-msg">Añade tu primer activo abajo ↓</div>';
+    return;
+  }
+  segments.forEach(s => {
+    const row = document.createElement("div");
+    row.className = "asset-row";
+    row.dataset.id = s.id;
+
+    const isEditing = editId === s.id;
+    row.innerHTML = `
+      <div class="asset-bar-col" style="background:${s.color}"></div>
+      <div class="asset-info">
+        <div class="asset-name">${s.name}</div>
+        ${isEditing ? `
+          <div class="edit-row">
+            <input class="edit-input" id="edit-inp" type="number" value="${s.value}" min="0" step="any"/>
+            <button class="btn-sm btn-confirm" onclick="saveEdit(${s.id})">✓</button>
+            <button class="btn-sm btn-cancel" onclick="cancelEdit()">✕</button>
+          </div>
+        ` : `
+          <div class="asset-value">
+            ${fmt(s.value)}<span class="asset-edit-hint">doble clic p/ editar</span>
+          </div>
+        `}
+      </div>
+      <div class="pct-col">
+        <span class="pct-label" style="color:${s.color}">${fmtPct(s.pct)}</span>
+        <div class="pct-bar-bg">
+          <div class="pct-bar-fill" style="width:${s.pct}%;background:${s.color}"></div>
+        </div>
+      </div>
+      <button class="btn-del" onclick="removeAsset(${s.id})">✕</button>
+    `;
+
+    if (!isEditing) {
+      row.querySelector(".asset-value").addEventListener("dblclick", () => startEdit(s.id));
+    } else {
+      setTimeout(() => {
+        const inp = document.getElementById("edit-inp");
+        if (inp) { inp.focus(); inp.select(); }
+      }, 30);
+    }
+
+    list.appendChild(row);
+  });
+
+  document.getElementById("count-label").textContent = `${segments.length} posicion${segments.length !== 1 ? "es" : ""}`;
+}
+
+function startEdit(id) { editId = id; render(); }
+function cancelEdit() { editId = null; render(); }
+function saveEdit(id) {
+  const inp = document.getElementById("edit-inp");
+  const val = parseFloat(inp?.value);
+  if (!isNaN(val) && val > 0) {
+    assets = assets.map(a => a.id === id ? { ...a, value: val } : a);
+    save(); notify("Valor actualizado ✓");
+  }
+  editId = null; render();
+}
+function removeAsset(id) {
+  assets = assets.filter(a => a.id !== id);
+  save(); notify("Activo eliminado", "#E8714A"); render();
+}
+
+/* ---- Add ---- */
+let nextId = 100;
+document.getElementById("btn-add").addEventListener("click", addAsset);
+document.getElementById("inp-val").addEventListener("keydown", e => { if(e.key === "Enter") addAsset(); });
+document.getElementById("inp-name").addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById("inp-val").focus(); });
+
+function addAsset() {
+  const name = document.getElementById("inp-name").value.trim();
+  const val = parseFloat(document.getElementById("inp-val").value);
+  if (!name || isNaN(val) || val <= 0) {
+    notify("Rellena nombre y valor válido", "#E8714A"); return;
+  }
+  assets.push({ id: nextId++, name, value: val });
+  save();
+  document.getElementById("inp-name").value = "";
+  document.getElementById("inp-val").value = "";
+  document.getElementById("inp-name").focus();
+  notify("Activo añadido ✓");
+  render();
+}
+
+/* ---- Total ---- */
+function updateTotal(segments) {
+  const total = segments.reduce((a,s) => a + s.value, 0);
+  document.getElementById("total-val").textContent = fmt(total);
+}
+
+/* ---- Master render ---- */
+function render() {
+  const segments = getSegments();
+  const chartCard = document.getElementById("chart-card");
+  if (segments.length > 0) {
+    chartCard.style.display = "";
+    drawDonut(segments);
+    renderLegend(segments);
+    updateTotal(segments);
+  } else {
+    chartCard.style.display = "none";
+  }
+  renderList(segments);
+}
+
+load();
+render();
+</script>
+</body>
+</html>
