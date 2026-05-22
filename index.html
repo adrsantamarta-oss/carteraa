@@ -1,476 +1,422 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Cartera"/>
-<meta name="theme-color" content="#10131a"/>
-<link rel="manifest" href="manifest.json"/>
-<title>Cartera.Track</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #10131a;
-    --card: #151a26;
-    --border: #1e2a3a;
-    --border2: #191f2e;
-    --text: #e8f0f8;
-    --text2: #d4e4f4;
-    --muted: #8899bb;
-    --dim: #5a7090;
-    --dimmer: #3a4f65;
-    --accent: #F4C542;
-    --red: #E8714A;
-    --green: #5BC4A0;
-  }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', 'Courier New', monospace; }
-  body { display: flex; flex-direction: column; align-items: center; padding: 28px 16px 80px; min-height: 100vh; }
+import { useState, useRef } from "react";
 
-  .wrap { width: 100%; max-width: 460px; }
+const COLORS = [
+  "#F4C542", "#E8714A", "#5BC4A0", "#5A9CF8", "#C97BE8",
+  "#F47BB0", "#4DD9E8", "#A8E86B", "#FF8C42", "#7B8CF8"
+];
 
-  /* Header */
-  .header { margin-bottom: 24px; }
-  .header-title { display: flex; align-items: flex-end; gap: 8px; }
-  .header-title .w { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -1px; color: #fff; }
-  .header-title .y { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); }
-  .header-sub { font-size: 10px; color: var(--dim); letter-spacing: 2px; margin-top: 2px; }
+const fmt = (val) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }).format(val);
+const fmtPct = (val) => `${val.toFixed(2)}%`;
+const fmtPct1 = (val) => `${val.toFixed(1)}%`;
 
-  /* Notification */
-  #notif {
-    position: fixed; top: 16px; right: 16px; z-index: 999;
-    background: #1e2a38; border: 1px solid #2d3f52;
-    color: var(--green); padding: 10px 18px; border-radius: 8px;
-    font-size: 12px; letter-spacing: 1px;
-    opacity: 0; transform: translateY(-10px);
-    transition: all 0.25s ease; pointer-events: none;
-  }
-  #notif.show { opacity: 1; transform: translateY(0); }
-
-  /* Card */
-  .card {
-    background: var(--card); border-radius: 18px;
-    border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden;
-  }
-  .card-header {
-    padding: 13px 18px 11px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .card-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); }
-
-  /* Donut */
-  #donut-wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 12px 14px; }
-  #donut-svg { overflow: visible; }
-  .legend { width: 100%; margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
-  .legend-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 2px 0; transition: opacity 0.2s;
-  }
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .legend-name { flex: 1; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .legend-pct { font-size: 12px; font-weight: 600; min-width: 50px; text-align: right; }
-  .legend-val { font-size: 11px; color: var(--dim); min-width: 80px; text-align: right; }
-
-  /* Asset rows */
-  .asset-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 16px; border-bottom: 1px solid var(--border2);
-    transition: background 0.15s; cursor: default;
-  }
-  .asset-row:last-child { border-bottom: none; }
-  .asset-row:hover { background: #1a2030; }
-  .asset-bar-col { width: 8px; height: 36px; border-radius: 4px; flex-shrink: 0; }
-  .asset-info { flex: 1; min-width: 0; }
-  .asset-name { font-size: 13px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .asset-value { font-size: 11px; color: var(--dim); margin-top: 2px; }
-  .asset-edit-hint { font-size: 9px; color: var(--dimmer); margin-left: 5px; }
-  .pct-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .pct-label { font-size: 13px; font-weight: 600; }
-  .pct-bar-bg { width: 56px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .pct-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
-  .btn-del {
-    background: none; border: none; color: var(--dimmer); cursor: pointer;
-    font-size: 15px; padding: 4px 5px; border-radius: 4px; line-height: 1;
-    transition: color 0.15s; font-family: inherit;
-  }
-  .btn-del:hover { color: var(--red); }
-
-  /* Edit inline */
-  .edit-row { display: flex; gap: 6px; margin-top: 4px; }
-  .edit-input {
-    background: #0d1018; border: 1px solid var(--accent); border-radius: 6px;
-    color: #fff; padding: 3px 8px; font-size: 12px; width: 100px;
-    font-family: inherit; outline: none;
-  }
-  .btn-sm {
-    border: none; border-radius: 5px; padding: 3px 10px;
-    font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 600;
-  }
-  .btn-confirm { background: var(--accent); color: var(--bg); }
-  .btn-cancel { background: transparent; border: 1px solid #2d3f52; color: var(--muted); }
-
-  .empty-msg { padding: 28px 18px; text-align: center; color: #344050; font-size: 12px; letter-spacing: 1px; }
-
-  /* Add form */
-  .form-wrap { padding: 16px 16px 16px; }
-  .form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  .form-input {
-    flex: 2 1 130px; background: #0d1018; border: 1px solid var(--border);
-    border-radius: 10px; color: var(--text2); padding: 11px 13px;
-    font-size: 13px; font-family: inherit; outline: none;
-    transition: border 0.2s;
-  }
-  .form-input:focus { border-color: #F4C54255; }
-  .form-input.num { flex: 1 1 85px; }
-  .btn-add {
-    flex: 0 0 auto; background: var(--accent); border: none; border-radius: 10px;
-    color: var(--bg); padding: 11px 20px; font-size: 13px; font-weight: 700;
-    font-family: inherit; cursor: pointer; letter-spacing: 0.5px;
-    transition: opacity 0.15s, transform 0.15s;
-  }
-  .btn-add:hover { opacity: 0.85; transform: scale(0.97); }
-  .btn-add:active { transform: scale(0.94); }
-
-  /* Total bar */
-  .total-line {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 11px 18px; border-top: 1px solid var(--border);
-    font-size: 12px;
-  }
-  .total-label { color: var(--dim); letter-spacing: 1px; }
-  .total-val { color: var(--accent); font-weight: 600; font-size: 14px; }
-
-  @media (max-width: 400px) {
-    .legend-val { display: none; }
-    .form-input { font-size: 16px; } /* prevents zoom on iOS */
-    .form-input.num { font-size: 16px; }
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <div id="notif"></div>
-
-  <div class="header">
-    <div class="header-title">
-      <span class="w">CARTERA</span><span class="y">.TRACK</span>
-    </div>
-    <div class="header-sub">PORTFOLIO ALLOCATION TRACKER</div>
-  </div>
-
-  <!-- Donut chart card -->
-  <div class="card" id="chart-card" style="display:none">
-    <div id="donut-wrap">
-      <svg id="donut-svg" width="210" height="210"></svg>
-      <div class="legend" id="legend"></div>
-    </div>
-    <div class="total-line">
-      <span class="total-label">TOTAL CARTERA</span>
-      <span class="total-val" id="total-val">€0,00</span>
-    </div>
-  </div>
-
-  <!-- Asset list card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">MIS ACTIVOS</span>
-      <span class="card-label" id="count-label">0 posiciones</span>
-    </div>
-    <div id="asset-list">
-      <div class="empty-msg">Añade tu primer activo abajo ↓</div>
-    </div>
-  </div>
-
-  <!-- Add form card -->
-  <div class="card">
-    <div class="form-wrap">
-      <span class="card-label">AÑADIR ACTIVO</span>
-      <div class="form-row">
-        <input class="form-input" id="inp-name" type="text" placeholder="Nombre del activo" autocomplete="off"/>
-        <input class="form-input num" id="inp-val" type="number" min="0" step="any" placeholder="Valor €"/>
-        <button class="btn-add" id="btn-add">+ Añadir</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script>
-const COLORS = ["#F4C542","#E8714A","#5BC4A0","#5A9CF8","#C97BE8","#F47BB0","#4DD9E8","#A8E86B","#FF8C42","#7B8CF8"];
-const STORAGE_KEY = "cartera_assets_v1";
-
-let assets = [];
-let editId = null;
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) assets = JSON.parse(raw);
-  } catch(e) {}
-  if (!assets.length) {
-    assets = [
-      { id: 1, name: "MSCI World ETF", value: 8500 },
-      { id: 2, name: "Bitcoin", value: 3200 },
-      { id: 3, name: "Apple Inc.", value: 2100 },
-      { id: 4, name: "Oro (ETC)", value: 1400 },
-      { id: 5, name: "Bonos EU", value: 900 },
-    ];
-    save();
-  }
-}
-
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat("es-ES", { style:"currency", currency:"EUR", minimumFractionDigits:2 }).format(v);
-}
-function fmtPct(v) { return v.toFixed(2) + "%"; }
-
-let notifTimer;
-function notify(msg, color) {
-  const el = document.getElementById("notif");
-  el.textContent = msg;
-  el.style.color = color || "#5BC4A0";
-  el.classList.add("show");
-  clearTimeout(notifTimer);
-  notifTimer = setTimeout(() => el.classList.remove("show"), 2000);
-}
-
-function getSegments() {
-  const total = assets.reduce((a, x) => a + x.value, 0);
-  return assets.map((a, i) => ({
-    ...a,
-    pct: total > 0 ? (a.value / total) * 100 : 0,
-    color: COLORS[i % COLORS.length],
-    total
-  }));
-}
-
-/* ---- Donut ---- */
-function drawDonut(segments) {
-  const svg = document.getElementById("donut-svg");
-  const cx = 105, cy = 105, r = 80, ir = 52;
-  svg.innerHTML = "";
-
+// ── Donut Chart ──────────────────────────────────────────────
+const DonutChart = ({ segments }) => {
+  const size = 210, cx = 105, cy = 105, r = 78, ir = 50;
+  const [hovered, setHovered] = useState(null);
   let cum = 0;
-  const sorted = [...segments].sort((a,b) => b.pct - a.pct);
-  const total = segments.reduce((a,s) => a + s.value, 0);
-
-  sorted.forEach((seg, idx) => {
-    const start = cum;
-    cum += seg.pct / 100;
-    const end = cum;
-    const sa = start * 2 * Math.PI - Math.PI / 2;
-    const ea = end * 2 * Math.PI - Math.PI / 2;
-    const large = seg.pct > 50 ? 1 : 0;
-    const x1 = cx + r * Math.cos(sa), y1 = cy + r * Math.sin(sa);
-    const x2 = cx + r * Math.cos(ea), y2 = cy + r * Math.sin(ea);
-    const ix1 = cx + ir * Math.cos(sa), iy1 = cy + ir * Math.sin(sa);
-    const ix2 = cx + ir * Math.cos(ea), iy2 = cy + ir * Math.sin(ea);
-    const d = `M${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${ix2},${iy2} A${ir},${ir} 0 ${large} 0 ${ix1},${iy1} Z`;
-
-    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-    path.setAttribute("d", d);
-    path.setAttribute("fill", seg.color);
-    path.style.cursor = "pointer";
-    path.style.transition = "all 0.2s";
-    path.style.transformOrigin = `${cx}px ${cy}px`;
-
-    path.addEventListener("mouseenter", () => {
-      updateCenter(seg.name, fmtPct(seg.pct), fmt(seg.value), seg.color);
-      svg.querySelectorAll("path").forEach((p,i) => p.style.opacity = i === idx ? "1" : "0.35");
-      path.style.transform = "scale(1.06)";
-      path.style.filter = `drop-shadow(0 0 8px ${seg.color}88)`;
-    });
-    path.addEventListener("mouseleave", () => {
-      updateCenter(null, null, null, null, fmt(total));
-      svg.querySelectorAll("path").forEach(p => { p.style.opacity = "1"; p.style.transform = "scale(1)"; p.style.filter = "none"; });
-    });
-    // touch
-    path.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      updateCenter(seg.name, fmtPct(seg.pct), fmt(seg.value), seg.color);
-    }, { passive: false });
-
-    svg.appendChild(path);
+  const arcs = segments.map((seg, i) => {
+    const s = cum; cum += seg.pct / 100; const e = cum;
+    const sa = s * 2 * Math.PI - Math.PI / 2;
+    const ea = e * 2 * Math.PI - Math.PI / 2;
+    const lg = seg.pct > 50 ? 1 : 0;
+    return {
+      ...seg, i, lg,
+      x1: cx + r * Math.cos(sa), y1: cy + r * Math.sin(sa),
+      x2: cx + r * Math.cos(ea), y2: cy + r * Math.sin(ea),
+      ix1: cx + ir * Math.cos(sa), iy1: cy + ir * Math.sin(sa),
+      ix2: cx + ir * Math.cos(ea), iy2: cy + ir * Math.sin(ea),
+    };
   });
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg width={size} height={size} style={{ overflow: "visible" }}>
+        {arcs.map((a) => {
+          const isH = hovered === a.i;
+          const d = `M${a.x1},${a.y1} A${r},${r} 0 ${a.lg} 1 ${a.x2},${a.y2} L${a.ix2},${a.iy2} A${ir},${ir} 0 ${a.lg} 0 ${a.ix1},${a.iy1} Z`;
+          return (
+            <path key={a.i} d={d} fill={a.color}
+              opacity={hovered === null || isH ? 1 : 0.4}
+              style={{ transformOrigin: `${cx}px ${cy}px`, transform: `scale(${isH ? 1.06 : 1})`, transition: "all 0.2s", cursor: "pointer", filter: isH ? `drop-shadow(0 0 8px ${a.color}88)` : "none" }}
+              onMouseEnter={() => setHovered(a.i)} onMouseLeave={() => setHovered(null)} />
+          );
+        })}
+        <circle cx={cx} cy={cy} r={ir - 2} fill="#10131a" />
+        {hovered !== null ? (
+          <>
+            <text x={cx} y={cy - 10} textAnchor="middle" fill={segments[hovered].color} fontSize="12" fontFamily="DM Mono,monospace" fontWeight="600">{segments[hovered].name.length > 13 ? segments[hovered].name.slice(0, 13) + "…" : segments[hovered].name}</text>
+            <text x={cx} y={cy + 9} textAnchor="middle" fill="#fff" fontSize="15" fontFamily="DM Mono,monospace" fontWeight="700">{fmtPct(segments[hovered].pct)}</text>
+            <text x={cx} y={cy + 26} textAnchor="middle" fill="#8899aa" fontSize="10" fontFamily="DM Mono,monospace">{fmt(segments[hovered].value)}</text>
+          </>
+        ) : (
+          <>
+            <text x={cx} y={cy - 4} textAnchor="middle" fill="#aabbcc" fontSize="10" fontFamily="DM Mono,monospace" letterSpacing="1">TOTAL</text>
+            <text x={cx} y={cy + 15} textAnchor="middle" fill="#fff" fontSize="13" fontFamily="DM Mono,monospace" fontWeight="700">{fmt(total)}</text>
+          </>
+        )}
+      </svg>
+    </div>
+  );
+};
 
-  // inner circle
-  const circ = document.createElementNS("http://www.w3.org/2000/svg","circle");
-  circ.setAttribute("cx", cx); circ.setAttribute("cy", cy); circ.setAttribute("r", ir - 2);
-  circ.setAttribute("fill", "#10131a");
-  svg.appendChild(circ);
+// ── Calculator Tab ───────────────────────────────────────────
+const Calculator = ({ assets, colors }) => {
+  const total = assets.reduce((a, x) => a + x.value, 0);
+  const [targets, setTargets] = useState(() =>
+    Object.fromEntries(assets.map((a, i) => [a.id, (100 / assets.length).toFixed(1)]))
+  );
+  const [contribution, setContribution] = useState("");
 
-  // center text group
-  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-  g.id = "center-g";
-  svg.appendChild(g);
-  updateCenter(null, null, null, null, fmt(total));
-}
+  // Sync targets when assets change (new asset added)
+  const assetIds = assets.map(a => a.id).join(",");
 
-function makeText(x, y, content, fill, size, weight) {
-  const t = document.createElementNS("http://www.w3.org/2000/svg","text");
-  t.setAttribute("x", x); t.setAttribute("y", y);
-  t.setAttribute("text-anchor", "middle");
-  t.setAttribute("fill", fill);
-  t.setAttribute("font-size", size);
-  t.setAttribute("font-family", "'DM Mono', monospace");
-  t.setAttribute("font-weight", weight || "400");
-  t.textContent = content;
-  return t;
-}
+  const updateTarget = (id, val) => setTargets(t => ({ ...t, [id]: val }));
 
-function updateCenter(name, pct, val, color, totalStr) {
-  const g = document.getElementById("center-g");
-  if (!g) return;
-  g.innerHTML = "";
-  if (name) {
-    g.appendChild(makeText(105, 95, name.length > 12 ? name.slice(0,12)+"…" : name, color, "11", "600"));
-    g.appendChild(makeText(105, 113, pct, "#fff", "16", "700"));
-    g.appendChild(makeText(105, 130, val, "#8899aa", "10", "400"));
-  } else {
-    g.appendChild(makeText(105, 100, "TOTAL", "#aabbcc", "10", "400"));
-    g.appendChild(makeText(105, 118, totalStr || "€0,00", "#fff", "13", "700"));
-  }
-}
+  const totalTargetPct = Object.values(targets).reduce((a, v) => a + (parseFloat(v) || 0), 0);
+  const isValid = Math.abs(totalTargetPct - 100) < 0.1;
 
-/* ---- Legend ---- */
-function renderLegend(segments) {
-  const sorted = [...segments].sort((a,b) => b.pct - a.pct);
-  const leg = document.getElementById("legend");
-  leg.innerHTML = "";
-  sorted.forEach(s => {
-    const row = document.createElement("div");
-    row.className = "legend-row";
-    row.innerHTML = `
-      <div class="legend-dot" style="background:${s.color}"></div>
-      <div class="legend-name">${s.name}</div>
-      <div class="legend-pct" style="color:${s.color}">${fmtPct(s.pct)}</div>
-      <div class="legend-val">${fmt(s.value)}</div>
-    `;
-    leg.appendChild(row);
-  });
-}
+  // Distribute 100% evenly
+  const distributeEvenly = () => {
+    const eq = (100 / assets.length).toFixed(1);
+    setTargets(Object.fromEntries(assets.map(a => [a.id, eq])));
+  };
 
-/* ---- Asset list ---- */
-function renderList(segments) {
-  const list = document.getElementById("asset-list");
-  list.innerHTML = "";
-  if (!segments.length) {
-    list.innerHTML = '<div class="empty-msg">Añade tu primer activo abajo ↓</div>';
-    return;
-  }
-  segments.forEach(s => {
-    const row = document.createElement("div");
-    row.className = "asset-row";
-    row.dataset.id = s.id;
+  // Calculate how much to put in each asset
+  const calc = () => {
+    const contrib = parseFloat(contribution);
+    if (!contrib || contrib <= 0 || !isValid) return null;
+    const newTotal = total + contrib;
+    return assets.map((a, i) => {
+      const targetPct = parseFloat(targets[a.id]) || 0;
+      const targetValue = (targetPct / 100) * newTotal;
+      const toAdd = Math.max(0, targetValue - a.value);
+      const newValue = a.value + toAdd;
+      const newPct = (newValue / newTotal) * 100;
+      const currentPct = total > 0 ? (a.value / total) * 100 : 0;
+      return { ...a, color: colors[i % colors.length], targetPct, toAdd, newValue, newPct, currentPct };
+    });
+  };
 
-    const isEditing = editId === s.id;
-    row.innerHTML = `
-      <div class="asset-bar-col" style="background:${s.color}"></div>
-      <div class="asset-info">
-        <div class="asset-name">${s.name}</div>
-        ${isEditing ? `
-          <div class="edit-row">
-            <input class="edit-input" id="edit-inp" type="number" value="${s.value}" min="0" step="any"/>
-            <button class="btn-sm btn-confirm" onclick="saveEdit(${s.id})">✓</button>
-            <button class="btn-sm btn-cancel" onclick="cancelEdit()">✕</button>
-          </div>
-        ` : `
-          <div class="asset-value">
-            ${fmt(s.value)}<span class="asset-edit-hint">doble clic p/ editar</span>
-          </div>
-        `}
-      </div>
-      <div class="pct-col">
-        <span class="pct-label" style="color:${s.color}">${fmtPct(s.pct)}</span>
-        <div class="pct-bar-bg">
-          <div class="pct-bar-fill" style="width:${s.pct}%;background:${s.color}"></div>
+  // Smart allocation: fill the most underweight first
+  const calcSmart = () => {
+    const contrib = parseFloat(contribution);
+    if (!contrib || contrib <= 0 || !isValid) return null;
+    const newTotal = total + contrib;
+    let remaining = contrib;
+    const allocs = assets.map((a, i) => {
+      const targetPct = parseFloat(targets[a.id]) || 0;
+      const targetVal = (targetPct / 100) * newTotal;
+      const needed = Math.max(0, targetVal - a.value);
+      return { ...a, color: colors[i % colors.length], targetPct, needed, currentPct: total > 0 ? (a.value / total) * 100 : 0 };
+    });
+    // Sort by most underweight first
+    const sorted = [...allocs].sort((a, b) => (a.currentPct - a.targetPct) - (b.currentPct - b.targetPct));
+    const toAdd = Object.fromEntries(allocs.map(a => [a.id, 0]));
+    for (const asset of sorted) {
+      const give = Math.min(asset.needed, remaining);
+      toAdd[asset.id] = give;
+      remaining -= give;
+      if (remaining <= 0.01) break;
+    }
+    // Distribute any leftover proportionally
+    if (remaining > 0.01) {
+      const totalTarget = allocs.reduce((a, x) => a + x.targetPct, 0);
+      allocs.forEach(a => { toAdd[a.id] += (a.targetPct / totalTarget) * remaining; });
+    }
+    return allocs.map(a => {
+      const add = toAdd[a.id];
+      const newValue = a.value + add;
+      const newPct = (newValue / newTotal) * 100;
+      return { ...a, toAdd: add, newValue, newPct };
+    });
+  };
+
+  const results = calcSmart();
+  const contrib = parseFloat(contribution);
+
+  const s = (v) => ({ background: "#0d1018", border: "1px solid #1e2a3a", borderRadius: 8, color: "#d4e4f4", padding: "6px 10px", fontSize: 12, fontFamily: "inherit", outline: "none", width: "100%" });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* Targets */}
+      <div style={{ background: "#151a26", borderRadius: 18, border: "1px solid #1e2a3a", overflow: "hidden" }}>
+        <div style={{ padding: "13px 18px 10px", borderBottom: "1px solid #1e2a3a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 10, letterSpacing: 2, color: "#5a7090" }}>% OBJETIVO POR FONDO</span>
+          <button onClick={distributeEvenly} style={{ background: "none", border: "1px solid #2a3a50", borderRadius: 6, color: "#5a7090", fontSize: 10, cursor: "pointer", padding: "3px 8px", fontFamily: "inherit" }}>Repartir igual</button>
+        </div>
+        {assets.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "#344050", fontSize: 12 }}>Añade activos en la pestaña Cartera</div>}
+        {assets.map((a, i) => {
+          const color = colors[i % colors.length];
+          const currentPct = total > 0 ? (a.value / total) * 100 : 0;
+          return (
+            <div key={a.id} style={{ padding: "11px 18px", borderBottom: i < assets.length - 1 ? "1px solid #191f2e" : "none", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 8, height: 28, borderRadius: 4, background: color, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: "#d4e4f4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</div>
+                <div style={{ fontSize: 10, color: "#5a7090", marginTop: 2 }}>Ahora: {fmtPct1(currentPct)} · {fmt(a.value)}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  value={targets[a.id] ?? ""}
+                  onChange={e => updateTarget(a.id, e.target.value)}
+                  style={{ ...s(), width: 64, textAlign: "center", color, borderColor: color + "55" }}
+                />
+                <span style={{ fontSize: 11, color: "#5a7090" }}>%</span>
+              </div>
+            </div>
+          );
+        })}
+        <div style={{ padding: "10px 18px", borderTop: "1px solid #1e2a3a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: "#5a7090", letterSpacing: 1 }}>TOTAL OBJETIVO</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isValid ? "#5BC4A0" : "#E8714A" }}>
+            {totalTargetPct.toFixed(1)}% {isValid ? "✓" : `← falta ${(100 - totalTargetPct).toFixed(1)}%`}
+          </span>
         </div>
       </div>
-      <button class="btn-del" onclick="removeAsset(${s.id})">✕</button>
-    `;
 
-    if (!isEditing) {
-      row.querySelector(".asset-value").addEventListener("dblclick", () => startEdit(s.id));
-    } else {
-      setTimeout(() => {
-        const inp = document.getElementById("edit-inp");
-        if (inp) { inp.focus(); inp.select(); }
-      }, 30);
-    }
+      {/* Contribution input */}
+      <div style={{ background: "#151a26", borderRadius: 18, border: "1px solid #1e2a3a", padding: "16px 18px" }}>
+        <div style={{ fontSize: 10, letterSpacing: 2, color: "#5a7090", marginBottom: 12 }}>¿CUÁNTO VAS A APORTAR?</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="number" min="0" step="any" placeholder="Importe total €"
+            value={contribution}
+            onChange={e => setContribution(e.target.value)}
+            style={{ flex: 1, background: "#0d1018", border: "1px solid #F4C54266", borderRadius: 10, color: "#F4C542", padding: "11px 14px", fontSize: 15, fontFamily: "inherit", outline: "none", fontWeight: 700 }}
+          />
+        </div>
+        {!isValid && contrib > 0 && (
+          <div style={{ marginTop: 8, fontSize: 11, color: "#E8714A" }}>⚠ Los porcentajes objetivo deben sumar 100%</div>
+        )}
+      </div>
 
-    list.appendChild(row);
+      {/* Results */}
+      {results && contrib > 0 && isValid && (
+        <div style={{ background: "#151a26", borderRadius: 18, border: "1px solid #1e2a3a", overflow: "hidden" }}>
+          <div style={{ padding: "13px 18px 10px", borderBottom: "1px solid #1e2a3a" }}>
+            <span style={{ fontSize: 10, letterSpacing: 2, color: "#5a7090" }}>CÓMO REPARTIR {fmt(contrib)}</span>
+          </div>
+
+          {results.map((r, i) => {
+            const pctDiff = r.newPct - r.currentPct;
+            const isZero = r.toAdd < 0.01;
+            return (
+              <div key={r.id} style={{ padding: "13px 18px", borderBottom: i < results.length - 1 ? "1px solid #191f2e" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{ width: 8, height: 32, borderRadius: 4, background: r.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: "#d4e4f4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                    <div style={{ fontSize: 10, color: "#5a7090", marginTop: 1 }}>{fmtPct1(r.currentPct)} → {fmtPct1(r.newPct)} <span style={{ color: pctDiff >= 0 ? "#5BC4A0" : "#E8714A" }}>({pctDiff >= 0 ? "+" : ""}{pctDiff.toFixed(1)}%)</span></div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: isZero ? "#5a7090" : r.color }}>{isZero ? "—" : fmt(r.toAdd)}</div>
+                    <div style={{ fontSize: 10, color: "#5a7090" }}>objetivo: {fmtPct1(r.targetPct)}</div>
+                  </div>
+                </div>
+                {/* Progress bars: before/after */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 9, color: "#5a7090", width: 30 }}>ANTES</span>
+                    <div style={{ flex: 1, height: 4, background: "#1e2a3a", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.min(r.currentPct, 100)}%`, height: "100%", background: r.color, opacity: 0.4, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: "#5a7090", width: 32, textAlign: "right" }}>{fmtPct1(r.currentPct)}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 9, color: "#5a7090", width: 30 }}>DESPUÉS</span>
+                    <div style={{ flex: 1, height: 4, background: "#1e2a3a", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.min(r.newPct, 100)}%`, height: "100%", background: r.color, borderRadius: 2, transition: "width 0.5s" }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: r.color, width: 32, textAlign: "right", fontWeight: 700 }}>{fmtPct1(r.newPct)}</span>
+                  </div>
+                  {/* Target line indicator */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 9, color: "#5a7090", width: 30 }}>OBJETIVO</span>
+                    <div style={{ flex: 1, height: 4, background: "#1e2a3a", borderRadius: 2, overflow: "hidden", position: "relative" }}>
+                      <div style={{ width: `${Math.min(r.targetPct, 100)}%`, height: "100%", background: "#F4C542", opacity: 0.3, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: "#F4C542", width: 32, textAlign: "right" }}>{fmtPct1(r.targetPct)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Summary */}
+          <div style={{ padding: "12px 18px", borderTop: "1px solid #1e2a3a", background: "#0d1018" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: "#5a7090" }}>TOTAL APORTADO</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#F4C542" }}>{fmt(contrib)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 10, color: "#5a7090" }}>NUEVA CARTERA TOTAL</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#5BC4A0" }}>{fmt(total + contrib)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Main App ─────────────────────────────────────────────────
+const initialAssets = [
+  { id: 1, name: "MSCI World ETF", value: 8500 },
+  { id: 2, name: "Bitcoin", value: 3200 },
+  { id: 3, name: "Apple Inc.", value: 2100 },
+  { id: 4, name: "Oro (ETC)", value: 1400 },
+  { id: 5, name: "Bonos EU", value: 900 },
+];
+let nextId = 6;
+
+export default function App() {
+  const [assets, setAssets] = useState(initialAssets);
+  const [form, setForm] = useState({ name: "", value: "" });
+  const [editId, setEditId] = useState(null);
+  const [editVal, setEditVal] = useState("");
+  const [notif, setNotif] = useState(null);
+  const [tab, setTab] = useState("cartera");
+  const inputRef = useRef();
+
+  const total = assets.reduce((a, x) => a + x.value, 0);
+  const segments = assets.map((a, i) => ({ ...a, pct: total > 0 ? (a.value / total) * 100 : 0, color: COLORS[i % COLORS.length] }));
+  const sorted = [...segments].sort((a, b) => b.pct - a.pct);
+
+  const showNotif = (msg) => { setNotif(msg); setTimeout(() => setNotif(null), 2000); };
+  const addAsset = () => {
+    const val = parseFloat(form.value.replace(",", "."));
+    if (!form.name.trim() || isNaN(val) || val <= 0) return;
+    setAssets([...assets, { id: nextId++, name: form.name.trim(), value: val }]);
+    setForm({ name: "", value: "" });
+    showNotif("Activo añadido ✓");
+    inputRef.current?.focus();
+  };
+  const removeAsset = (id) => { setAssets(assets.filter(a => a.id !== id)); showNotif("Activo eliminado"); };
+  const startEdit = (a) => { setEditId(a.id); setEditVal(String(a.value)); };
+  const saveEdit = (id) => {
+    const val = parseFloat(editVal.replace(",", "."));
+    if (!isNaN(val) && val > 0) { setAssets(assets.map(a => a.id === id ? { ...a, value: val } : a)); showNotif("Valor actualizado ✓"); }
+    setEditId(null);
+  };
+
+  const tabStyle = (t) => ({
+    flex: 1, padding: "9px 4px", border: "none", borderRadius: 10,
+    fontFamily: "inherit", fontSize: 12, fontWeight: 800, cursor: "pointer",
+    letterSpacing: 0.5, transition: "all 0.2s",
+    background: tab === t ? "#F4C542" : "none",
+    color: tab === t ? "#10131a" : "#5a7090",
   });
 
-  document.getElementById("count-label").textContent = `${segments.length} posicion${segments.length !== 1 ? "es" : ""}`;
-}
+  return (
+    <div style={{ minHeight: "100vh", background: "#10131a", fontFamily: "'DM Mono','Courier New',monospace", color: "#e8f0f8", display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 16px 64px" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
-function startEdit(id) { editId = id; render(); }
-function cancelEdit() { editId = null; render(); }
-function saveEdit(id) {
-  const inp = document.getElementById("edit-inp");
-  const val = parseFloat(inp?.value);
-  if (!isNaN(val) && val > 0) {
-    assets = assets.map(a => a.id === id ? { ...a, value: val } : a);
-    save(); notify("Valor actualizado ✓");
-  }
-  editId = null; render();
-}
-function removeAsset(id) {
-  assets = assets.filter(a => a.id !== id);
-  save(); notify("Activo eliminado", "#E8714A"); render();
-}
+      {/* Header */}
+      <div style={{ width: "100%", maxWidth: 480, marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 2 }}>
+          <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: "-1px", color: "#fff" }}>CARTERA</span>
+          <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: "#F4C542" }}>.TRACK</span>
+        </div>
+        <div style={{ fontSize: 10, color: "#5a7090", letterSpacing: "2px" }}>PORTFOLIO ALLOCATION TRACKER</div>
+      </div>
 
-/* ---- Add ---- */
-let nextId = 100;
-document.getElementById("btn-add").addEventListener("click", addAsset);
-document.getElementById("inp-val").addEventListener("keydown", e => { if(e.key === "Enter") addAsset(); });
-document.getElementById("inp-name").addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById("inp-val").focus(); });
+      {/* Notification */}
+      <div style={{ position: "fixed", top: 18, right: 18, zIndex: 999, background: "#1e2a38", border: "1px solid #2d3f52", color: "#5BC4A0", padding: "10px 16px", borderRadius: 8, fontSize: 12, letterSpacing: 1, opacity: notif ? 1 : 0, transform: notif ? "translateY(0)" : "translateY(-12px)", transition: "all 0.25s", pointerEvents: "none" }}>
+        {notif}
+      </div>
 
-function addAsset() {
-  const name = document.getElementById("inp-name").value.trim();
-  const val = parseFloat(document.getElementById("inp-val").value);
-  if (!name || isNaN(val) || val <= 0) {
-    notify("Rellena nombre y valor válido", "#E8714A"); return;
-  }
-  assets.push({ id: nextId++, name, value: val });
-  save();
-  document.getElementById("inp-name").value = "";
-  document.getElementById("inp-val").value = "";
-  document.getElementById("inp-name").focus();
-  notify("Activo añadido ✓");
-  render();
+      <div style={{ width: "100%", maxWidth: 480 }}>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 6, background: "#151a26", border: "1px solid #1e2a3a", borderRadius: 14, padding: 5, marginBottom: 16 }}>
+          <button style={tabStyle("cartera")} onClick={() => setTab("cartera")}>📊 Cartera</button>
+          <button style={tabStyle("calculadora")} onClick={() => setTab("calculadora")}>🧮 Calculadora</button>
+        </div>
+
+        {/* ── TAB CARTERA ── */}
+        {tab === "cartera" && (
+          <>
+            {assets.length > 0 && (
+              <div style={{ background: "#151a26", borderRadius: 20, border: "1px solid #1e2a3a", padding: "22px 16px 16px", marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <DonutChart segments={sorted} />
+                <div style={{ marginTop: 14, width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {sorted.map(s => (
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+                      <div style={{ flex: 1, fontSize: 11, color: "#8899bb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: s.color, minWidth: 48, textAlign: "right" }}>{fmtPct(s.pct)}</div>
+                      <div style={{ fontSize: 11, color: "#5a7090", minWidth: 78, textAlign: "right" }}>{fmt(s.value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Asset list */}
+            <div style={{ background: "#151a26", borderRadius: 20, border: "1px solid #1e2a3a", marginBottom: 16, overflow: "hidden" }}>
+              <div style={{ padding: "13px 18px 10px", borderBottom: "1px solid #1e2a3a", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 10, letterSpacing: "2px", color: "#5a7090" }}>MIS ACTIVOS</span>
+                <span style={{ fontSize: 10, color: "#5a7090" }}>{assets.length} posiciones</span>
+              </div>
+              {assets.length === 0 && <div style={{ padding: "26px 18px", textAlign: "center", color: "#344050", fontSize: 12 }}>Añade tu primer activo abajo ↓</div>}
+              {segments.map((s, idx) => (
+                <div key={s.id} style={{ padding: "12px 18px", borderBottom: idx < segments.length - 1 ? "1px solid #191f2e" : "none", display: "flex", alignItems: "center", gap: 12, transition: "background 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#1a2030"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ width: 8, height: 30, borderRadius: 4, background: s.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#d4e4f4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                    {editId === s.id ? (
+                      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                        <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditId(null); }}
+                          style={{ background: "#0d1018", border: "1px solid #F4C542", borderRadius: 6, color: "#fff", padding: "3px 8px", fontSize: 12, width: 100, fontFamily: "inherit", outline: "none" }} />
+                        <button onClick={() => saveEdit(s.id)} style={{ background: "#F4C542", border: "none", borderRadius: 5, padding: "3px 10px", color: "#10131a", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>✓</button>
+                        <button onClick={() => setEditId(null)} style={{ background: "transparent", border: "1px solid #2d3f52", borderRadius: 5, padding: "3px 8px", color: "#8899bb", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕</button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "#5a7090", marginTop: 1 }} onDoubleClick={() => startEdit(s)}>
+                        {fmt(s.value)}<span style={{ marginLeft: 6, fontSize: 10, color: "#374a60" }}>doble clic p/ editar</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ width: 58, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: s.color }}>{fmtPct(s.pct)}</span>
+                    <div style={{ width: 58, height: 4, background: "#1e2a3a", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ width: `${s.pct}%`, height: "100%", background: s.color, borderRadius: 2, transition: "width 0.5s" }} />
+                    </div>
+                  </div>
+                  <button onClick={() => removeAsset(s.id)} style={{ background: "none", border: "none", color: "#3a4f65", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: "2px 4px", borderRadius: 4, transition: "color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#E8714A"} onMouseLeave={e => e.currentTarget.style.color = "#3a4f65"}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add form */}
+            <div style={{ background: "#151a26", borderRadius: 20, border: "1px solid #1e2a3a", padding: "16px 18px" }}>
+              <div style={{ fontSize: 10, letterSpacing: "2px", color: "#5a7090", marginBottom: 12 }}>AÑADIR ACTIVO</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input ref={inputRef} placeholder="Nombre del activo" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Enter") addAsset(); }}
+                  style={{ flex: "2 1 140px", background: "#0d1018", border: "1px solid #1e2a3a", borderRadius: 10, color: "#d4e4f4", padding: "10px 14px", fontSize: 13, fontFamily: "inherit", outline: "none" }}
+                  onFocus={e => e.target.style.border = "1px solid #F4C54266"} onBlur={e => e.target.style.border = "1px solid #1e2a3a"} />
+                <input placeholder="Valor €" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Enter") addAsset(); }} type="number" min="0"
+                  style={{ flex: "1 1 90px", background: "#0d1018", border: "1px solid #1e2a3a", borderRadius: 10, color: "#d4e4f4", padding: "10px 14px", fontSize: 13, fontFamily: "inherit", outline: "none" }}
+                  onFocus={e => e.target.style.border = "1px solid #F4C54266"} onBlur={e => e.target.style.border = "1px solid #1e2a3a"} />
+                <button onClick={addAsset} style={{ flex: "0 0 auto", background: "#F4C542", border: "none", borderRadius: 10, color: "#10131a", padding: "10px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", transition: "opacity 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.85"} onMouseLeave={e => e.currentTarget.style.opacity = "1"}>+ Añadir</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── TAB CALCULADORA ── */}
+        {tab === "calculadora" && <Calculator assets={assets} colors={COLORS} />}
+
+      </div>
+    </div>
+  );
 }
-
-/* ---- Total ---- */
-function updateTotal(segments) {
-  const total = segments.reduce((a,s) => a + s.value, 0);
-  document.getElementById("total-val").textContent = fmt(total);
-}
-
-/* ---- Master render ---- */
-function render() {
-  const segments = getSegments();
-  const chartCard = document.getElementById("chart-card");
-  if (segments.length > 0) {
-    chartCard.style.display = "";
-    drawDonut(segments);
-    renderLegend(segments);
-    updateTotal(segments);
-  } else {
-    chartCard.style.display = "none";
-  }
-  renderList(segments);
-}
-
-load();
-render();
-</script>
-</body>
-</html>
