@@ -117,6 +117,29 @@ body{display:flex;flex-direction:column;align-items:center;padding:28px 14px 80p
 .result-summary{padding:12px 18px;border-top:1px solid var(--border);background:#0d1018;display:flex;flex-direction:column;gap:5px;}
 .sum-row{display:flex;justify-content:space-between;font-size:11px;}
 
+/* ── APORTADO ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+.stat{padding:16px 12px 15px;border-right:1px solid var(--border);min-width:0;}
+.stat:last-child{border-right:none;}
+.stat-label{font-size:9px;letter-spacing:1.5px;color:var(--dim);margin-bottom:7px;}
+.stat-val{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-sub{font-size:10px;margin-top:4px;color:var(--dim);}
+
+#line-wrap{padding:14px 10px 6px;}
+#line-svg{width:100%;height:auto;display:block;}
+.line-legend{display:flex;flex-direction:column;gap:7px;padding:6px 18px 16px;}
+.line-legend-row{display:flex;align-items:center;gap:10px;font-size:11px;}
+.line-key{width:16px;height:3px;border-radius:2px;flex-shrink:0;}
+.line-legend-name{flex:1;color:var(--muted);}
+.line-legend-val{font-weight:600;}
+
+.field{display:flex;flex-direction:column;gap:5px;flex:1 1 120px;min-width:0;}
+.field-label{font-size:9px;letter-spacing:1px;color:var(--dim);}
+.field .form-input{flex:none;width:100%;}
+input[type="date"].form-input{color-scheme:dark;min-height:44px;}
+.form-hint{font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;}
+.btn-full{width:100%;margin-top:12px;padding:13px 20px;}
+
 /* Notification */
 #notif{position:fixed;top:16px;right:16px;z-index:999;background:#1e2a38;border:1px solid #2d3f52;color:var(--green);padding:10px 16px;border-radius:8px;font-size:12px;letter-spacing:1px;opacity:0;transform:translateY(-10px);transition:all 0.25s;pointer-events:none;}
 #notif.show{opacity:1;transform:translateY(0);}
@@ -124,6 +147,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:28px 14px 80p
 @media(max-width:400px){
   .form-input,.contrib-input{font-size:16px;}
   .legend-val{display:none;}
+  .stat-val{font-size:12px;}
 }
 </style>
 </head>
@@ -139,6 +163,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:28px 14px 80p
 <div class="tabs">
   <button class="tab active" id="tab-cartera" onclick="switchTab('cartera')">📊 Cartera</button>
   <button class="tab" id="tab-calc" onclick="switchTab('calc')">🧮 Calculadora</button>
+  <button class="tab" id="tab-aport" onclick="switchTab('aport')">💰 Aportado</button>
 </div>
 
 <!-- ── CARTERA ── -->
@@ -209,16 +234,93 @@ body{display:flex;flex-direction:column;align-items:center;padding:28px 14px 80p
   </div>
 
 </div>
+
+<!-- ── APORTADO ── -->
+<div id="panel-aport" style="display:none">
+
+  <!-- Resumen -->
+  <div class="card">
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">APORTADO</div>
+        <div class="stat-val" id="st-in" style="color:var(--gold)">€0,00</div>
+        <div class="stat-sub">lo que has puesto</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">VALOR ACTUAL</div>
+        <div class="stat-val" id="st-val" style="color:var(--green)">€0,00</div>
+        <div class="stat-sub">según Cartera</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">GANANCIA</div>
+        <div class="stat-val" id="st-gain">—</div>
+        <div class="stat-sub" id="st-gain-pct">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfica -->
+  <div class="card" id="line-card" style="display:none">
+    <div class="card-header">
+      <span class="card-label">EVOLUCIÓN</span>
+    </div>
+    <div id="line-wrap">
+      <svg id="line-svg" viewBox="0 0 440 230" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="line-legend">
+      <div class="line-legend-row"><span class="line-key" style="background:var(--gold)"></span><span class="line-legend-name">Dinero aportado por ti</span><span class="line-legend-val" id="lg-in" style="color:var(--gold)"></span></div>
+      <div class="line-legend-row"><span class="line-key" style="background:var(--green)"></span><span class="line-legend-name">Valor del fondo</span><span class="line-legend-val" id="lg-val" style="color:var(--green)"></span></div>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">MIS APORTACIONES</span>
+      <span class="card-label" id="contrib-count">0 aportaciones</span>
+    </div>
+    <div id="contrib-list"><div class="empty-msg">Añade tu primera aportación abajo ↓</div></div>
+  </div>
+
+  <!-- Formulario -->
+  <div class="card">
+    <div class="form-wrap">
+      <span class="card-label">AÑADIR APORTACIÓN</span>
+      <div class="form-row" style="margin-top:12px;">
+        <div class="field">
+          <span class="field-label">FECHA</span>
+          <input class="form-input" id="c-date" type="date"/>
+        </div>
+        <div class="field">
+          <span class="field-label">IMPORTE € (NEGATIVO = RETIRADA)</span>
+          <input class="form-input" id="c-amt" type="number" step="any" placeholder="Ej. 300"/>
+        </div>
+        <div class="field">
+          <span class="field-label">VALOR TOTAL DE LA CARTERA ESE DÍA € (OPCIONAL)</span>
+          <input class="form-input" id="c-val" type="number" min="0" step="any" placeholder="Ej. 4150"/>
+        </div>
+      </div>
+      <button class="btn-add btn-full" id="btn-add-contrib">+ Añadir aportación</button>
+      <div class="form-hint">Si pones el valor de la cartera de una fecha pasada, se guarda para dibujar la línea del fondo. Para hoy no hace falta: se toma de la pestaña Cartera, y cada vez que cambias un valor ahí se guarda un punto del día.</div>
+    </div>
+  </div>
+
+</div>
 </div>
 
 <script>
 const STORAGE_KEY = "cartera_assets_v2";
 const TARGET_KEY = "cartera_targets_v2";
+const CONTRIB_KEY = "cartera_contribs_v1";
+const SNAP_KEY = "cartera_snaps_v1";
 const COLORS = ["#F4C542","#E8714A","#5BC4A0","#5A9CF8","#C97BE8","#F47BB0","#4DD9E8","#A8E86B","#FF8C42","#7B8CF8"];
 
 let assets = [];
 let targets = {}; // { id: pct }
+let contribs = []; // [{id,date:'YYYY-MM-DD',amount}]
+let snaps = {};    // { 'YYYY-MM-DD': valor total de la cartera ese día }
 let editId = null;
+let editContribId = null;
 let nextId = Date.now();
 let currentTab = "cartera";
 let nt;
@@ -226,6 +328,8 @@ let nt;
 function load() {
   try { const r = localStorage.getItem(STORAGE_KEY); if (r) assets = JSON.parse(r); } catch(e) {}
   try { const r = localStorage.getItem(TARGET_KEY); if (r) targets = JSON.parse(r); } catch(e) {}
+  try { const r = localStorage.getItem(CONTRIB_KEY); if (r) contribs = JSON.parse(r); } catch(e) {}
+  try { const r = localStorage.getItem(SNAP_KEY); if (r) snaps = JSON.parse(r); } catch(e) {}
   if (!assets.length) {
     assets = [
       {id:1,name:"MSCI World ETF",value:8500},{id:2,name:"Bitcoin",value:3200},
@@ -236,6 +340,8 @@ function load() {
 }
 function saveAssets() { localStorage.setItem(STORAGE_KEY, JSON.stringify(assets)); }
 function saveTargets() { localStorage.setItem(TARGET_KEY, JSON.stringify(targets)); }
+function saveContribs() { localStorage.setItem(CONTRIB_KEY, JSON.stringify(contribs)); }
+function saveSnaps() { localStorage.setItem(SNAP_KEY, JSON.stringify(snaps)); }
 
 function fmt(v) { return new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",minimumFractionDigits:2}).format(v); }
 function fmtPct(v,d=2) { return v.toFixed(d)+"%"; }
@@ -244,13 +350,32 @@ function notify(msg) {
   el.classList.add("show"); clearTimeout(nt); nt = setTimeout(()=>el.classList.remove("show"),2000);
 }
 
+// ── FECHAS Y VALOR ────────────────────────────────────────
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function dateMs(s){ const [y,m,d]=s.split("-").map(Number); return Date.UTC(y,m-1,d); }
+function fmtDateLong(s){ const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; }
+function fmtDateShort(s){ const [y,m,d]=s.split("-"); return `${d}/${m}/${y.slice(2)}`; }
+function msToDate(ms){ return new Date(ms).toISOString().slice(0,10); }
+function totalValue(){ return assets.reduce((a,x)=>a+x.value,0); }
+
+// Guarda el valor total de la cartera de hoy (el último cambio del día es el que queda)
+function snap(){
+  const t=totalValue();
+  if(t>0) snaps[todayStr()]=t; else delete snaps[todayStr()];
+  saveSnaps();
+}
+
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById("panel-cartera").style.display = tab==="cartera"?"block":"none";
-  document.getElementById("panel-calc").style.display = tab==="calc"?"block":"none";
-  document.getElementById("tab-cartera").className = "tab"+(tab==="cartera"?" active":"");
-  document.getElementById("tab-calc").className = "tab"+(tab==="calc"?" active":"");
+  ["cartera","calc","aport"].forEach(t=>{
+    document.getElementById("panel-"+t).style.display = t===tab?"block":"none";
+    document.getElementById("tab-"+t).className = "tab"+(t===tab?" active":"");
+  });
   if (tab==="calc") renderCalc();
+  if (tab==="aport") renderAportado();
 }
 
 // ── DONUT ─────────────────────────────────────────────────
@@ -363,11 +488,11 @@ function cancelEdit(){editId=null;renderCartera();}
 function saveEdit(id){
   const inp=document.getElementById("edit-inp");
   const val=parseFloat(inp?.value);
-  if(!isNaN(val)&&val>0){assets=assets.map(a=>a.id===id?{...a,value:val}:a);saveAssets();notify("Valor actualizado ✓");}
+  if(!isNaN(val)&&val>0){assets=assets.map(a=>a.id===id?{...a,value:val}:a);saveAssets();snap();notify("Valor actualizado ✓");}
   editId=null;renderCartera();
   if(currentTab==="calc")renderCalc();
 }
-function removeAsset(id){assets=assets.filter(a=>a.id!==id);saveAssets();notify("Activo eliminado");renderCartera();if(currentTab==="calc")renderCalc();}
+function removeAsset(id){assets=assets.filter(a=>a.id!==id);saveAssets();snap();notify("Activo eliminado");renderCartera();if(currentTab==="calc")renderCalc();}
 
 document.getElementById("btn-add").addEventListener("click",addAsset);
 document.getElementById("inp-val").addEventListener("keydown",e=>{if(e.key==="Enter")addAsset();});
@@ -379,6 +504,7 @@ function addAsset(){
   if(!name||isNaN(val)||val<=0){notify("Rellena nombre y valor");return;}
   assets.push({id:nextId++,name,value:val});
   saveAssets();
+  snap();
   document.getElementById("inp-name").value="";
   document.getElementById("inp-val").value="";
   document.getElementById("inp-name").focus();
@@ -521,7 +647,186 @@ function renderResults(){
     <div class="sum-row"><span style="color:var(--dim)">NUEVA CARTERA TOTAL</span><span style="color:#5BC4A0;font-weight:700">${fmt(newTotal)}</span></div>`;
 }
 
-load();renderCartera();
+// ── APORTADO ─────────────────────────────────────────────
+function sortedContribs(){
+  return [...contribs].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
+}
+
+function fmtK(v){
+  const a=Math.abs(v);
+  const s=a>=1000?(a/1000).toFixed(a>=10000?0:1).replace(/\.0$/,"")+"k":String(Math.round(a));
+  return (v<0?"-":"")+s;
+}
+
+function renderAportado(){
+  const today=todayStr();
+  const asc=sortedContribs();
+  const totalIn=asc.reduce((a,c)=>a+c.amount,0);
+  const val=totalValue();
+  const gain=val-totalIn;
+
+  // Resumen
+  document.getElementById("st-in").textContent=fmt(totalIn);
+  document.getElementById("st-val").textContent=fmt(val);
+  const gEl=document.getElementById("st-gain");
+  const gpEl=document.getElementById("st-gain-pct");
+  if(asc.length&&totalIn>0){
+    const pct=(gain/totalIn)*100;
+    const col=gain>=0?"#5BC4A0":"#E8714A";
+    gEl.textContent=(gain>=0?"+":"")+fmt(gain);
+    gEl.style.color=col;
+    gpEl.textContent=(pct>=0?"+":"")+pct.toFixed(2)+"%";
+    gpEl.style.color=col;
+  } else {
+    gEl.textContent="—"; gEl.style.color="var(--dim)";
+    gpEl.innerHTML="&nbsp;";
+  }
+
+  // Puntos de las dos líneas
+  let cum=0; const inPts=[];
+  asc.forEach(c=>{
+    cum+=c.amount;
+    const last=inPts[inPts.length-1];
+    if(last&&last.d===c.date) last.v=cum; else inPts.push({d:c.date,v:cum});
+  });
+  if(inPts.length&&inPts[inPts.length-1].d<today) inPts.push({d:today,v:cum});
+
+  const valPts=Object.keys(snaps).filter(d=>d<today).sort().map(d=>({d,v:snaps[d]}));
+  if(val>0) valPts.push({d:today,v:val});
+
+  const lineCard=document.getElementById("line-card");
+  if(asc.length){
+    lineCard.style.display="";
+    drawLines(inPts,valPts);
+    document.getElementById("lg-in").textContent=fmt(totalIn);
+    document.getElementById("lg-val").textContent=val>0?fmt(val):"—";
+  } else {
+    lineCard.style.display="none";
+  }
+
+  // Lista (más recientes arriba)
+  const cumById={}; let run=0;
+  asc.forEach(c=>{run+=c.amount;cumById[c.id]=run;});
+  const list=document.getElementById("contrib-list");
+  const n=contribs.length;
+  document.getElementById("contrib-count").textContent=`${n} aportacion${n!==1?"es":""}`;
+  if(!n){list.innerHTML='<div class="empty-msg">Añade tu primera aportación abajo ↓</div>';return;}
+  list.innerHTML="";
+  [...asc].reverse().forEach(c=>{
+    const isE=editContribId===c.id;
+    const row=document.createElement("div"); row.className="asset-row";
+    row.innerHTML=`
+      <div class="asset-bar-col" style="background:${c.amount<0?"#E8714A":"#F4C542"}"></div>
+      <div class="asset-info">
+        ${isE
+          ?`<div class="edit-row"><input class="edit-input" id="edit-c-inp" type="number" value="${c.amount}" step="any"/><button class="btn-sm btn-confirm" onclick="saveContribEdit(${c.id})">✓</button><button class="btn-sm btn-cancel" onclick="cancelContribEdit()">✕</button></div>`
+          :`<div class="asset-name" style="color:${c.amount<0?"#E8714A":"var(--text2)"}">${c.amount<0?"Retirada ":""}${fmt(Math.abs(c.amount))}</div>`}
+        <div class="asset-value">${fmtDateLong(c.date)}${isE?"":'<span class="asset-hint">doble clic p/ editar</span>'}</div>
+      </div>
+      <div class="pct-col">
+        <span class="pct-label" style="color:var(--muted)">${fmt(cumById[c.id])}</span>
+        <span style="font-size:9px;color:var(--dimmer)">acumulado</span>
+      </div>
+      <button class="btn-del" onclick="removeContrib(${c.id})">✕</button>`;
+    if(!isE) row.querySelector(".asset-name").addEventListener("dblclick",()=>startContribEdit(c.id));
+    else setTimeout(()=>{const inp=document.getElementById("edit-c-inp");if(inp){inp.focus();inp.select();}},30);
+    list.appendChild(row);
+  });
+}
+
+function drawLines(inPts,valPts){
+  const svg=document.getElementById("line-svg");
+  const W=440,H=230,L=46,R=16,T=14,B=30;
+  const all=[...inPts,...valPts];
+  if(!all.length){svg.innerHTML="";return;}
+
+  const ms=all.map(p=>dateMs(p.d));
+  const t0=Math.min(...ms), t1=Math.max(...ms);
+  const vals=all.map(p=>p.v);
+  const ymin=Math.min(0,...vals);
+  let ymax=Math.max(...vals,1)*1.08;
+  if(ymax<=ymin) ymax=ymin+1;
+
+  const px=t=>t1===t0?L+(W-L-R)/2:L+((t-t0)/(t1-t0))*(W-L-R);
+  const py=v=>T+(1-(v-ymin)/(ymax-ymin))*(H-T-B);
+
+  let out="";
+  // cuadrícula y etiquetas del eje Y
+  for(let i=0;i<=4;i++){
+    const v=ymin+(ymax-ymin)*i/4, y=py(v);
+    out+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#1e2a3a" stroke-width="1"/>`;
+    out+=`<text x="${L-6}" y="${(y+3).toFixed(1)}" text-anchor="end" fill="#5a7090" font-size="9" font-family="'DM Mono',monospace">${fmtK(v)}</text>`;
+  }
+  // etiquetas del eje X
+  const xl=(t,anchor)=>`<text x="${px(t).toFixed(1)}" y="${H-10}" text-anchor="${anchor}" fill="#5a7090" font-size="9" font-family="'DM Mono',monospace">${fmtDateShort(msToDate(t))}</text>`;
+  if(t1===t0){ out+=xl(t0,"middle"); }
+  else { out+=xl(t0,"start")+xl(t1,"end"); if(t1-t0>86400000*20) out+=xl((t0+t1)/2,"middle"); }
+
+  const poly=(pts,color)=>{
+    let s="";
+    if(pts.length>1){
+      s+=`<polyline points="${pts.map(p=>px(dateMs(p.d)).toFixed(1)+","+py(p.v).toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    if(pts.length<=30){
+      pts.forEach(p=>{ s+=`<circle cx="${px(dateMs(p.d)).toFixed(1)}" cy="${py(p.v).toFixed(1)}" r="2.6" fill="${color}"/>`; });
+    }
+    const last=pts[pts.length-1];
+    if(last) s+=`<circle cx="${px(dateMs(last.d)).toFixed(1)}" cy="${py(last.v).toFixed(1)}" r="4.2" fill="${color}" stroke="#151a26" stroke-width="2"/>`;
+    return s;
+  };
+
+  out+=poly(inPts,"#F4C542");
+  out+=poly(valPts,"#5BC4A0");
+  svg.innerHTML=out;
+}
+
+function addContrib(){
+  const date=document.getElementById("c-date").value;
+  const amt=parseFloat(document.getElementById("c-amt").value);
+  const valRaw=document.getElementById("c-val").value;
+  const today=todayStr();
+  if(!date||isNaN(amt)||amt===0){notify("Pon fecha e importe");return;}
+  if(date>today){notify("La fecha no puede ser futura");return;}
+  contribs.push({id:nextId++,date,amount:amt});
+  saveContribs();
+  if(valRaw!==""&&date<today){
+    const v=parseFloat(valRaw);
+    if(!isNaN(v)&&v>0){snaps[date]=v;saveSnaps();}
+  }
+  document.getElementById("c-amt").value="";
+  document.getElementById("c-val").value="";
+  document.getElementById("c-amt").focus();
+  notify("Aportación añadida ✓");
+  renderAportado();
+}
+
+function removeContrib(id){
+  contribs=contribs.filter(c=>c.id!==id);
+  saveContribs();
+  notify("Aportación eliminada");
+  renderAportado();
+}
+function startContribEdit(id){editContribId=id;renderAportado();}
+function cancelContribEdit(){editContribId=null;renderAportado();}
+function saveContribEdit(id){
+  const inp=document.getElementById("edit-c-inp");
+  const v=parseFloat(inp?.value);
+  if(!isNaN(v)&&v!==0){
+    contribs=contribs.map(c=>c.id===id?{...c,amount:v}:c);
+    saveContribs();
+    notify("Aportación actualizada ✓");
+  }
+  editContribId=null;
+  renderAportado();
+}
+
+document.getElementById("btn-add-contrib").addEventListener("click",addContrib);
+document.getElementById("c-amt").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("c-val").focus();});
+document.getElementById("c-val").addEventListener("keydown",e=>{if(e.key==="Enter")addContrib();});
+
+load();
+(function(){const cd=document.getElementById("c-date");cd.value=todayStr();cd.max=todayStr();})();
+renderCartera();
 </script>
 </body>
 </html>
