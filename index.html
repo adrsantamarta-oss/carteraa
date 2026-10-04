@@ -140,6 +140,12 @@ input[type="date"].form-input{color-scheme:dark;min-height:44px;}
 .form-hint{font-size:10px;color:var(--dim);line-height:1.5;margin-top:12px;}
 .btn-full{width:100%;margin-top:12px;padding:13px 20px;}
 
+.line-wrap{padding:14px 10px 6px;}
+.line-wrap svg{width:100%;height:auto;display:block;}
+.mini-legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:2px 18px 16px;font-size:10px;color:var(--muted);}
+.mini-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+select.form-input{color-scheme:dark;min-height:44px;width:100%;}
+
 /* Notification */
 #notif{position:fixed;top:16px;right:16px;z-index:999;background:#1e2a38;border:1px solid #2d3f52;color:var(--green);padding:10px 16px;border-radius:8px;font-size:12px;letter-spacing:1px;opacity:0;transform:translateY(-10px);transition:all 0.25s;pointer-events:none;}
 #notif.show{opacity:1;transform:translateY(0);}
@@ -238,40 +244,35 @@ input[type="date"].form-input{color-scheme:dark;min-height:44px;}
 <!-- ── APORTADO ── -->
 <div id="panel-aport" style="display:none">
 
-  <!-- Resumen -->
+  <!-- Formulario -->
   <div class="card">
-    <div class="stats-grid">
-      <div class="stat">
-        <div class="stat-label">APORTADO</div>
-        <div class="stat-val" id="st-in" style="color:var(--gold)">€0,00</div>
-        <div class="stat-sub">lo que has puesto</div>
+    <div class="form-wrap">
+      <span class="card-label">AÑADIR APORTACIÓN</span>
+      <div class="field" style="margin-top:12px;">
+        <span class="field-label">FONDO</span>
+        <select class="form-input" id="c-fund"></select>
       </div>
-      <div class="stat">
-        <div class="stat-label">VALOR ACTUAL</div>
-        <div class="stat-val" id="st-val" style="color:var(--green)">€0,00</div>
-        <div class="stat-sub">según Cartera</div>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="field">
+          <span class="field-label">FECHA</span>
+          <input class="form-input" id="c-date" type="date"/>
+        </div>
+        <div class="field">
+          <span class="field-label">IMPORTE €</span>
+          <input class="form-input" id="c-amt" type="number" step="any" placeholder="Ej. 300"/>
+        </div>
       </div>
-      <div class="stat">
-        <div class="stat-label">GANANCIA</div>
-        <div class="stat-val" id="st-gain">—</div>
-        <div class="stat-sub" id="st-gain-pct">&nbsp;</div>
+      <div class="field" style="margin-top:10px;">
+        <span class="field-label">VALOR DEL FONDO ESE DÍA € (OPCIONAL)</span>
+        <input class="form-input" id="c-val" type="number" min="0" step="any" placeholder="Solo si la fecha es pasada"/>
       </div>
+      <button class="btn-add btn-full" id="btn-add-contrib">+ Añadir aportación</button>
+      <div class="form-hint">El valor actual de cada fondo se toma de la pestaña Cartera: cada vez que lo actualizas allí se guarda un punto de la línea azul. El valor de ese día solo hace falta para aportaciones pasadas. Importe en negativo = retirada.</div>
     </div>
   </div>
 
-  <!-- Gráfica -->
-  <div class="card" id="line-card" style="display:none">
-    <div class="card-header">
-      <span class="card-label">EVOLUCIÓN</span>
-    </div>
-    <div id="line-wrap">
-      <svg id="line-svg" viewBox="0 0 440 230" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-    <div class="line-legend">
-      <div class="line-legend-row"><span class="line-key" style="background:var(--gold)"></span><span class="line-legend-name">Dinero aportado por ti</span><span class="line-legend-val" id="lg-in" style="color:var(--gold)"></span></div>
-      <div class="line-legend-row"><span class="line-key" style="background:var(--green)"></span><span class="line-legend-name">Valor del fondo</span><span class="line-legend-val" id="lg-val" style="color:var(--green)"></span></div>
-    </div>
-  </div>
+  <!-- Gráficas: conjunta + una por fondo -->
+  <div id="aport-charts"></div>
 
   <!-- Lista -->
   <div class="card">
@@ -279,30 +280,7 @@ input[type="date"].form-input{color-scheme:dark;min-height:44px;}
       <span class="card-label">MIS APORTACIONES</span>
       <span class="card-label" id="contrib-count">0 aportaciones</span>
     </div>
-    <div id="contrib-list"><div class="empty-msg">Añade tu primera aportación abajo ↓</div></div>
-  </div>
-
-  <!-- Formulario -->
-  <div class="card">
-    <div class="form-wrap">
-      <span class="card-label">AÑADIR APORTACIÓN</span>
-      <div class="form-row" style="margin-top:12px;">
-        <div class="field">
-          <span class="field-label">FECHA</span>
-          <input class="form-input" id="c-date" type="date"/>
-        </div>
-        <div class="field">
-          <span class="field-label">IMPORTE € (NEGATIVO = RETIRADA)</span>
-          <input class="form-input" id="c-amt" type="number" step="any" placeholder="Ej. 300"/>
-        </div>
-        <div class="field">
-          <span class="field-label">VALOR TOTAL DE LA CARTERA ESE DÍA € (OPCIONAL)</span>
-          <input class="form-input" id="c-val" type="number" min="0" step="any" placeholder="Ej. 4150"/>
-        </div>
-      </div>
-      <button class="btn-add btn-full" id="btn-add-contrib">+ Añadir aportación</button>
-      <div class="form-hint">Si pones el valor de la cartera de una fecha pasada, se guarda para dibujar la línea del fondo. Para hoy no hace falta: se toma de la pestaña Cartera, y cada vez que cambias un valor ahí se guarda un punto del día.</div>
-    </div>
+    <div id="contrib-list"><div class="empty-msg">Añade tu primera aportación arriba ↑</div></div>
   </div>
 
 </div>
@@ -311,14 +289,14 @@ input[type="date"].form-input{color-scheme:dark;min-height:44px;}
 <script>
 const STORAGE_KEY = "cartera_assets_v2";
 const TARGET_KEY = "cartera_targets_v2";
-const CONTRIB_KEY = "cartera_contribs_v1";
-const SNAP_KEY = "cartera_snaps_v1";
+const CONTRIB_KEY = "cartera_contribs_v2";
+const SNAP_KEY = "cartera_snaps_v2";
 const COLORS = ["#F4C542","#E8714A","#5BC4A0","#5A9CF8","#C97BE8","#F47BB0","#4DD9E8","#A8E86B","#FF8C42","#7B8CF8"];
 
 let assets = [];
 let targets = {}; // { id: pct }
-let contribs = []; // [{id,date:'YYYY-MM-DD',amount}]
-let snaps = {};    // { 'YYYY-MM-DD': valor total de la cartera ese día }
+let contribs = []; // [{id,date:'YYYY-MM-DD',amount,assetId}]
+let snaps = {};    // { 'YYYY-MM-DD': { idFondo: valor } }
 let editId = null;
 let editContribId = null;
 let nextId = Date.now();
@@ -361,10 +339,13 @@ function fmtDateShort(s){ const [y,m,d]=s.split("-"); return `${d}/${m}/${y.slic
 function msToDate(ms){ return new Date(ms).toISOString().slice(0,10); }
 function totalValue(){ return assets.reduce((a,x)=>a+x.value,0); }
 
-// Guarda el valor total de la cartera de hoy (el último cambio del día es el que queda)
+// Guarda el valor de cada fondo de hoy (el último cambio del día es el que queda)
 function snap(){
-  const t=totalValue();
-  if(t>0) snaps[todayStr()]=t; else delete snaps[todayStr()];
+  const t=todayStr();
+  if(assets.length){
+    const o={}; assets.forEach(a=>{o[a.id]=a.value;});
+    snaps[t]=o;
+  } else { delete snaps[t]; }
   saveSnaps();
 }
 
@@ -492,7 +473,13 @@ function saveEdit(id){
   editId=null;renderCartera();
   if(currentTab==="calc")renderCalc();
 }
-function removeAsset(id){assets=assets.filter(a=>a.id!==id);saveAssets();snap();notify("Activo eliminado");renderCartera();if(currentTab==="calc")renderCalc();}
+function removeAsset(id){
+  if(contribs.some(c=>c.assetId===id)){
+    if(!confirm("Este fondo tiene aportaciones registradas. Si lo eliminas, se borran también. ¿Eliminar?")) return;
+    contribs=contribs.filter(c=>c.assetId!==id); saveContribs();
+  }
+  assets=assets.filter(a=>a.id!==id);saveAssets();snap();notify("Activo eliminado");renderCartera();if(currentTab==="calc")renderCalc();
+}
 
 document.getElementById("btn-add").addEventListener("click",addAsset);
 document.getElementById("inp-val").addEventListener("keydown",e=>{if(e.key==="Enter")addAsset();});
@@ -648,9 +635,12 @@ function renderResults(){
 }
 
 // ── APORTADO ─────────────────────────────────────────────
-function sortedContribs(){
-  return [...contribs].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
-}
+const C_IN = "#F4C542";   // amarillo: dinero que aportas tú
+const C_VAL = "#5A9CF8";  // azul: valor del fondo
+
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function byDate(a,b){ return a.date<b.date?-1:a.date>b.date?1:a.id-b.id; }
+function contribsOf(id){ return contribs.filter(c=>c.assetId===id).sort(byDate); }
 
 function fmtK(v){
   const a=Math.abs(v);
@@ -658,87 +648,70 @@ function fmtK(v){
   return (v<0?"-":"")+s;
 }
 
-function renderAportado(){
-  const today=todayStr();
-  const asc=sortedContribs();
-  const totalIn=asc.reduce((a,c)=>a+c.amount,0);
-  const val=totalValue();
-  const gain=val-totalIn;
-
-  // Resumen
-  document.getElementById("st-in").textContent=fmt(totalIn);
-  document.getElementById("st-val").textContent=fmt(val);
-  const gEl=document.getElementById("st-gain");
-  const gpEl=document.getElementById("st-gain-pct");
-  if(asc.length&&totalIn>0){
-    const pct=(gain/totalIn)*100;
-    const col=gain>=0?"#5BC4A0":"#E8714A";
-    gEl.textContent=(gain>=0?"+":"")+fmt(gain);
-    gEl.style.color=col;
-    gpEl.textContent=(pct>=0?"+":"")+pct.toFixed(2)+"%";
-    gpEl.style.color=col;
-  } else {
-    gEl.textContent="—"; gEl.style.color="var(--dim)";
-    gpEl.innerHTML="&nbsp;";
-  }
-
-  // Puntos de las dos líneas
-  let cum=0; const inPts=[];
-  asc.forEach(c=>{
-    cum+=c.amount;
-    const last=inPts[inPts.length-1];
-    if(last&&last.d===c.date) last.v=cum; else inPts.push({d:c.date,v:cum});
+// Dinero aportado acumulado, en escalera: sube justo el día de cada aportación
+function inPoints(list,today){
+  const pts=[]; let cum=0;
+  list.forEach(c=>{
+    const prev=cum; cum+=c.amount;
+    const last=pts[pts.length-1];
+    if(last&&last.d===c.date){ last.v=cum; }
+    else{
+      if(pts.length) pts.push({d:c.date,v:prev,dot:false});
+      pts.push({d:c.date,v:cum});
+    }
   });
-  if(inPts.length&&inPts[inPts.length-1].d<today) inPts.push({d:today,v:cum});
-
-  const valPts=Object.keys(snaps).filter(d=>d<today).sort().map(d=>({d,v:snaps[d]}));
-  if(val>0) valPts.push({d:today,v:val});
-
-  const lineCard=document.getElementById("line-card");
-  if(asc.length){
-    lineCard.style.display="";
-    drawLines(inPts,valPts);
-    document.getElementById("lg-in").textContent=fmt(totalIn);
-    document.getElementById("lg-val").textContent=val>0?fmt(val):"—";
-  } else {
-    lineCard.style.display="none";
-  }
-
-  // Lista (más recientes arriba)
-  const cumById={}; let run=0;
-  asc.forEach(c=>{run+=c.amount;cumById[c.id]=run;});
-  const list=document.getElementById("contrib-list");
-  const n=contribs.length;
-  document.getElementById("contrib-count").textContent=`${n} aportacion${n!==1?"es":""}`;
-  if(!n){list.innerHTML='<div class="empty-msg">Añade tu primera aportación abajo ↓</div>';return;}
-  list.innerHTML="";
-  [...asc].reverse().forEach(c=>{
-    const isE=editContribId===c.id;
-    const row=document.createElement("div"); row.className="asset-row";
-    row.innerHTML=`
-      <div class="asset-bar-col" style="background:${c.amount<0?"#E8714A":"#F4C542"}"></div>
-      <div class="asset-info">
-        ${isE
-          ?`<div class="edit-row"><input class="edit-input" id="edit-c-inp" type="number" value="${c.amount}" step="any"/><button class="btn-sm btn-confirm" onclick="saveContribEdit(${c.id})">✓</button><button class="btn-sm btn-cancel" onclick="cancelContribEdit()">✕</button></div>`
-          :`<div class="asset-name" style="color:${c.amount<0?"#E8714A":"var(--text2)"}">${c.amount<0?"Retirada ":""}${fmt(Math.abs(c.amount))}</div>`}
-        <div class="asset-value">${fmtDateLong(c.date)}${isE?"":'<span class="asset-hint">doble clic p/ editar</span>'}</div>
-      </div>
-      <div class="pct-col">
-        <span class="pct-label" style="color:var(--muted)">${fmt(cumById[c.id])}</span>
-        <span style="font-size:9px;color:var(--dimmer)">acumulado</span>
-      </div>
-      <button class="btn-del" onclick="removeContrib(${c.id})">✕</button>`;
-    if(!isE) row.querySelector(".asset-name").addEventListener("dblclick",()=>startContribEdit(c.id));
-    else setTimeout(()=>{const inp=document.getElementById("edit-c-inp");if(inp){inp.focus();inp.select();}},30);
-    list.appendChild(row);
-  });
+  if(pts.length&&pts[pts.length-1].d<today) pts.push({d:today,v:cum,dot:false});
+  return pts;
 }
 
-function drawLines(inPts,valPts){
-  const svg=document.getElementById("line-svg");
+// Valor de un fondo: puntos guardados desde su primera aportación + valor actual
+function valPoints(id,today){
+  const first=contribsOf(id)[0];
+  const a=assets.find(x=>x.id===id);
+  const pts=[];
+  Object.keys(snaps).sort().forEach(d=>{
+    if(first&&d<today&&d>=first.date&&snaps[d]&&snaps[d][id]!==undefined) pts.push({d,v:snaps[d][id]});
+  });
+  if(a) pts.push({d:today,v:a.value});
+  return pts;
+}
+
+// Valor conjunto: suma de los fondos con aportaciones registradas.
+// Para cada fecha usa el último valor conocido de cada fondo (si no hay, lo aportado hasta ese día).
+function totalValPoints(tracked,today){
+  const ids=tracked.map(a=>a.id);
+  const firsts={}; ids.forEach(id=>{firsts[id]=contribsOf(id)[0].date;});
+  const minFirst=Object.values(firsts).sort()[0];
+  const snapDates=Object.keys(snaps).sort();
+  const valueAt=(id,d)=>{
+    if(d<firsts[id]) return 0;
+    let v;
+    snapDates.forEach(k=>{ if(k<=d&&k>=firsts[id]&&snaps[k]&&snaps[k][id]!==undefined) v=snaps[k][id]; });
+    if(v===undefined) v=contribsOf(id).filter(c=>c.date<=d).reduce((s,c)=>s+c.amount,0);
+    return v;
+  };
+  const pts=[];
+  snapDates.forEach(d=>{
+    if(d<today&&d>=minFirst&&ids.some(id=>snaps[d]&&snaps[d][id]!==undefined&&d>=firsts[id]))
+      pts.push({d,v:ids.reduce((s,id)=>s+valueAt(id,d),0)});
+  });
+  pts.push({d:today,v:tracked.reduce((s,a)=>s+a.value,0)});
+  return pts;
+}
+
+function statsHtml(inn,val){
+  const gain=val-inn, pct=inn>0?(gain/inn)*100:0, col=gain>=0?"#5BC4A0":"#E8714A";
+  return `<div class="stats-grid">
+    <div class="stat"><div class="stat-label">APORTADO</div><div class="stat-val" style="color:${C_IN}">${fmt(inn)}</div></div>
+    <div class="stat"><div class="stat-label">VALOR</div><div class="stat-val" style="color:${C_VAL}">${fmt(val)}</div></div>
+    <div class="stat"><div class="stat-label">GANANCIA</div><div class="stat-val" style="color:${inn>0?col:"var(--dim)"}">${inn>0?(gain>=0?"+":"")+fmt(gain):"—"}</div><div class="stat-sub" style="color:${col}">${inn>0?(pct>=0?"+":"")+pct.toFixed(2)+"%":"&nbsp;"}</div></div>
+  </div>`;
+}
+
+function chartSvg(inPts,valPts){
   const W=440,H=230,L=46,R=16,T=14,B=30;
   const all=[...inPts,...valPts];
-  if(!all.length){svg.innerHTML="";return;}
+  if(!all.length) return "";
 
   const ms=all.map(p=>dateMs(p.d));
   const t0=Math.min(...ms), t1=Math.max(...ms);
@@ -751,47 +724,117 @@ function drawLines(inPts,valPts){
   const py=v=>T+(1-(v-ymin)/(ymax-ymin))*(H-T-B);
 
   let out="";
-  // cuadrícula y etiquetas del eje Y
   for(let i=0;i<=4;i++){
     const v=ymin+(ymax-ymin)*i/4, y=py(v);
     out+=`<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#1e2a3a" stroke-width="1"/>`;
     out+=`<text x="${L-6}" y="${(y+3).toFixed(1)}" text-anchor="end" fill="#5a7090" font-size="9" font-family="'DM Mono',monospace">${fmtK(v)}</text>`;
   }
-  // etiquetas del eje X
   const xl=(t,anchor)=>`<text x="${px(t).toFixed(1)}" y="${H-10}" text-anchor="${anchor}" fill="#5a7090" font-size="9" font-family="'DM Mono',monospace">${fmtDateShort(msToDate(t))}</text>`;
   if(t1===t0){ out+=xl(t0,"middle"); }
   else { out+=xl(t0,"start")+xl(t1,"end"); if(t1-t0>86400000*20) out+=xl((t0+t1)/2,"middle"); }
 
   const poly=(pts,color)=>{
-    let s="";
+    let o="";
     if(pts.length>1){
-      s+=`<polyline points="${pts.map(p=>px(dateMs(p.d)).toFixed(1)+","+py(p.v).toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      o+=`<polyline points="${pts.map(p=>px(dateMs(p.d)).toFixed(1)+","+py(p.v).toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
     }
-    if(pts.length<=30){
-      pts.forEach(p=>{ s+=`<circle cx="${px(dateMs(p.d)).toFixed(1)}" cy="${py(p.v).toFixed(1)}" r="2.6" fill="${color}"/>`; });
+    if(pts.length<=40){
+      pts.forEach(p=>{ if(p.dot===false) return; o+=`<circle cx="${px(dateMs(p.d)).toFixed(1)}" cy="${py(p.v).toFixed(1)}" r="2.6" fill="${color}"/>`; });
     }
     const last=pts[pts.length-1];
-    if(last) s+=`<circle cx="${px(dateMs(last.d)).toFixed(1)}" cy="${py(last.v).toFixed(1)}" r="4.2" fill="${color}" stroke="#151a26" stroke-width="2"/>`;
-    return s;
+    if(last) o+=`<circle cx="${px(dateMs(last.d)).toFixed(1)}" cy="${py(last.v).toFixed(1)}" r="4.2" fill="${color}" stroke="#151a26" stroke-width="2"/>`;
+    return o;
   };
 
-  out+=poly(inPts,"#F4C542");
-  out+=poly(valPts,"#5BC4A0");
-  svg.innerHTML=out;
+  out+=poly(inPts,C_IN);
+  out+=poly(valPts,C_VAL);
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+
+function chartCard(title,sub,inn,val,inPts,valPts,valLabel){
+  return `<div class="card">
+    <div class="card-header"><span class="card-label">${title}</span><span class="card-label">${sub}</span></div>
+    ${statsHtml(inn,val)}
+    <div class="line-wrap">${chartSvg(inPts,valPts)}</div>
+    <div class="mini-legend"><span><i style="background:${C_IN}"></i>Aportado por ti</span><span><i style="background:${C_VAL}"></i>${valLabel}</span></div>
+  </div>`;
+}
+
+function renderAportado(){
+  const today=todayStr();
+
+  // Selector de fondo (conserva la selección)
+  const sel=document.getElementById("c-fund");
+  const prev=sel.value;
+  sel.innerHTML=assets.length
+    ?assets.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")
+    :'<option value="">Añade fondos en la pestaña Cartera</option>';
+  if(prev&&assets.some(a=>String(a.id)===prev)) sel.value=prev;
+
+  // Gráficas
+  const tracked=assets.filter(a=>contribs.some(c=>c.assetId===a.id));
+  const box=document.getElementById("aport-charts");
+  if(!tracked.length){
+    box.innerHTML='<div class="card"><div class="empty-msg">Añade tu primera aportación arriba para ver las gráficas</div></div>';
+  } else {
+    const allIn=contribs.filter(c=>tracked.some(a=>a.id===c.assetId)).sort(byDate);
+    const totalIn=allIn.reduce((s,c)=>s+c.amount,0);
+    const totalVal=tracked.reduce((s,a)=>s+a.value,0);
+    let html=chartCard("TODOS LOS FONDOS",`${tracked.length} fondo${tracked.length!==1?"s":""}`,totalIn,totalVal,inPoints(allIn,today),totalValPoints(tracked,today),"Valor de todos los fondos");
+    tracked.forEach(a=>{
+      const list=contribsOf(a.id);
+      const inn=list.reduce((s,c)=>s+c.amount,0);
+      html+=chartCard(esc(a.name),`${list.length} aportacion${list.length!==1?"es":""}`,inn,a.value,inPoints(list,today),valPoints(a.id,today),"Valor del fondo");
+    });
+    box.innerHTML=html;
+  }
+
+  // Lista (más recientes arriba), con el acumulado de cada fondo
+  const asc=[...contribs].sort(byDate);
+  const run={}, cumById={};
+  asc.forEach(c=>{ run[c.assetId]=(run[c.assetId]||0)+c.amount; cumById[c.id]=run[c.assetId]; });
+  const list=document.getElementById("contrib-list");
+  const n=contribs.length;
+  document.getElementById("contrib-count").textContent=`${n} aportacion${n!==1?"es":""}`;
+  if(!n){list.innerHTML='<div class="empty-msg">Añade tu primera aportación arriba ↑</div>';return;}
+  list.innerHTML="";
+  [...asc].reverse().forEach(c=>{
+    const isE=editContribId===c.id;
+    const fund=assets.find(a=>a.id===c.assetId);
+    const row=document.createElement("div"); row.className="asset-row";
+    row.innerHTML=`
+      <div class="asset-bar-col" style="background:${c.amount<0?"#E8714A":C_IN}"></div>
+      <div class="asset-info">
+        ${isE
+          ?`<div class="edit-row"><input class="edit-input" id="edit-c-inp" type="number" value="${c.amount}" step="any"/><button class="btn-sm btn-confirm" onclick="saveContribEdit(${c.id})">✓</button><button class="btn-sm btn-cancel" onclick="cancelContribEdit()">✕</button></div>`
+          :`<div class="asset-name" style="color:${c.amount<0?"#E8714A":"var(--text2)"}">${c.amount<0?"Retirada ":""}${fmt(Math.abs(c.amount))}</div>`}
+        <div class="asset-value">${fmtDateLong(c.date)} · ${fund?esc(fund.name):"Fondo eliminado"}${isE?"":'<span class="asset-hint">doble clic p/ editar</span>'}</div>
+      </div>
+      <div class="pct-col">
+        <span class="pct-label" style="color:var(--muted)">${fmt(cumById[c.id])}</span>
+        <span style="font-size:9px;color:var(--dimmer)">acum. fondo</span>
+      </div>
+      <button class="btn-del" onclick="removeContrib(${c.id})">✕</button>`;
+    if(!isE) row.querySelector(".asset-name").addEventListener("dblclick",()=>startContribEdit(c.id));
+    else setTimeout(()=>{const inp=document.getElementById("edit-c-inp");if(inp){inp.focus();inp.select();}},30);
+    list.appendChild(row);
+  });
 }
 
 function addContrib(){
+  const aid=Number(document.getElementById("c-fund").value);
   const date=document.getElementById("c-date").value;
   const amt=parseFloat(document.getElementById("c-amt").value);
   const valRaw=document.getElementById("c-val").value;
   const today=todayStr();
+  if(!aid||!assets.some(a=>a.id===aid)){notify("Elige un fondo");return;}
   if(!date||isNaN(amt)||amt===0){notify("Pon fecha e importe");return;}
   if(date>today){notify("La fecha no puede ser futura");return;}
-  contribs.push({id:nextId++,date,amount:amt});
+  contribs.push({id:nextId++,date,amount:amt,assetId:aid});
   saveContribs();
   if(valRaw!==""&&date<today){
     const v=parseFloat(valRaw);
-    if(!isNaN(v)&&v>0){snaps[date]=v;saveSnaps();}
+    if(!isNaN(v)&&v>0){ snaps[date]=snaps[date]||{}; snaps[date][aid]=v; saveSnaps(); }
   }
   document.getElementById("c-amt").value="";
   document.getElementById("c-val").value="";
